@@ -111,6 +111,29 @@ class KaggleDiscovery:
         except (Exception, SystemExit) as error:
             raise DiscoveryError("Kaggle competition discovery failed") from error
 
+    def discover_active(
+        self,
+        *,
+        reference_time: datetime,
+        limit: int = 200,
+    ) -> list[Competition]:
+        """Return open public competitions whose deadline is still ahead."""
+        if not 1 <= limit <= self.MAX_LIMIT:
+            raise ValueError(f"limit must be between 1 and {self.MAX_LIMIT}")
+
+        try:
+            api = self._api or self._create_api()
+            api.authenticate()
+            return self._fetch_active_pages(
+                api,
+                reference_time=reference_time,
+                limit=limit,
+            )
+        except DiscoveryError:
+            raise
+        except (Exception, SystemExit) as error:
+            raise DiscoveryError("Kaggle competition discovery failed") from error
+
     def load_overview(self, competition: Competition) -> Competition:
         """Attach Overview page text used for interpretation."""
         try:
@@ -166,6 +189,45 @@ class KaggleDiscovery:
             if not next_page_token:
                 break
             page_token = next_page_token
+
+        return competitions
+
+    def _fetch_active_pages(
+        self,
+        api: object,
+        *,
+        reference_time: datetime,
+        limit: int,
+    ) -> list[Competition]:
+        # Token pagination stops after one page for this endpoint, so active
+        # discovery uses page numbers to walk the public general list.
+        competitions: list[Competition] = []
+        page = 1
+
+        while len(competitions) < limit:
+            page_size = min(self.PAGE_SIZE, limit - len(competitions))
+            response = api.competitions_list(
+                group="general",
+                sort_by="earliestDeadline",
+                page_size=page_size,
+                page=page,
+            )
+            api_competitions = (
+                getattr(response, "competitions", None) if response else None
+            )
+            if not api_competitions:
+                break
+
+            for item in api_competitions:
+                mapped = map_competition(item)
+                if mapped.deadline > reference_time:
+                    competitions.append(mapped)
+                    if len(competitions) >= limit:
+                        break
+
+            if len(api_competitions) < page_size:
+                break
+            page += 1
 
         return competitions
 
