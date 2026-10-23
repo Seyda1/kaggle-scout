@@ -19,3 +19,4 @@ class Competition:
     evaluation_metric: str | None = None
     date_created: datetime | None = None
     url: str | None = None
+    overview: str | None = None

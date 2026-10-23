@@ -51,6 +51,7 @@ class OllamaCompetitionProvider:
         competition_data = {
             "title": competition.title,
             "description": competition.description,
+            "overview": competition.overview,
             "tags": competition.tags,
             "deadline": competition.deadline.isoformat(),
             "category": competition.category,
@@ -70,5 +71,11 @@ class OllamaCompetitionProvider:
             "learning_value must be one of: low, medium, high, unknown.\n"
             "domain and reasoning must be strings. skills_required must be an "
             "array of strings. Keep reasoning short.\n"
+            "skills_required must contain only technical skills needed to "
+            "participate, such as python, machine learning, data analysis, "
+            "deep learning, or feature engineering. Do not include industry, "
+            "sector, or subject-matter knowledge (for example healthcare, "
+            "automotive, biology, or chemistry knowledge). Describe the "
+            "sector only in domain.\n"
             f"Competition: {json.dumps(competition_data)}"
         )
