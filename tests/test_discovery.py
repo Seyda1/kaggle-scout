@@ -304,3 +304,51 @@ def test_discover_does_not_fetch_overview_pages() -> None:
 
     assert competitions[0].overview is None
     assert api.page_calls == []
+
+
+def _dated_competition(ref: str, deadline: datetime) -> object:
+    item = minimal_api_competition(ref)
+    item.deadline = deadline
+    item.title = ref
+    return item
+
+
+def test_discover_active_pages_and_keeps_open_competitions() -> None:
+    first_page = [
+        _dated_competition("closed", datetime(2026, 1, 1)),
+        *[_dated_competition(f"old-{index}", datetime(2026, 1, 1)) for index in range(18)],
+        _dated_competition("open-one", datetime(2026, 12, 1)),
+    ]
+    api = FakeKaggleApi(
+        responses=[
+            SimpleNamespace(competitions=first_page, next_page_token=None),
+            SimpleNamespace(
+                competitions=[
+                    _dated_competition("open-two", datetime(2027, 1, 1)),
+                ],
+                next_page_token=None,
+            ),
+        ]
+    )
+
+    competitions = KaggleDiscovery(api).discover_active(
+        reference_time=datetime(2026, 6, 1),
+        limit=20,
+    )
+
+    assert [item.ref for item in competitions] == ["open-one", "open-two"]
+    assert api.list_calls[0] == {
+        "group": "general",
+        "sort_by": "earliestDeadline",
+        "page_size": 20,
+        "page": 1,
+    }
+    assert api.list_calls[1]["page"] == 2
+
+
+def test_discover_active_rejects_out_of_range_limit() -> None:
+    with pytest.raises(ValueError, match="limit must be between 1 and 200"):
+        KaggleDiscovery(FakeKaggleApi([])).discover_active(
+            reference_time=datetime(2026, 6, 1),
+            limit=0,
+        )
