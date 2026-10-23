@@ -1,9 +1,19 @@
 """Competition discovery through the official Kaggle Python API."""
 
+from dataclasses import replace
 from datetime import datetime
 from typing import Any
 
 from kaggle_scout.competition import Competition
+
+OVERVIEW_PAGE_NAMES = (
+    "Description",
+    "Background",
+    "Evaluation",
+    "Timeline",
+    "Prizes",
+    "Code Requirements",
+)
 
 
 class DiscoveryError(Exception):
@@ -101,6 +111,18 @@ class KaggleDiscovery:
         except (Exception, SystemExit) as error:
             raise DiscoveryError("Kaggle competition discovery failed") from error
 
+    def load_overview(self, competition: Competition) -> Competition:
+        """Attach Overview page text used for interpretation."""
+        try:
+            api = self._api or self._create_api()
+            api.authenticate()
+            pages = api.competition_list_pages(competition_slug(competition))
+            return replace(competition, overview=assemble_overview(pages))
+        except DiscoveryError:
+            raise
+        except (Exception, SystemExit) as error:
+            raise DiscoveryError("Kaggle competition overview failed") from error
+
     def _fetch_pages(
         self,
         api: object,
@@ -153,3 +175,30 @@ class KaggleDiscovery:
         from kaggle.api.kaggle_api_extended import KaggleApi
 
         return KaggleApi()
+
+
+def competition_slug(competition: Competition) -> str:
+    """Return the Kaggle competition name used by page APIs."""
+    source = competition.url or competition.ref
+    text = str(source).rstrip("/")
+    if "/competitions/" in text:
+        return text.split("/competitions/")[-1]
+    return text
+
+
+def assemble_overview(pages: object) -> str | None:
+    """Join selected Overview pages in a stable order."""
+    contents: dict[str, str] = {}
+    for page in pages or ():
+        name = _optional_text(getattr(page, "name", None))
+        content = _optional_text(getattr(page, "content", None))
+        if name is None or content is None:
+            continue
+        contents[name.casefold()] = content
+
+    sections: list[str] = []
+    for name in OVERVIEW_PAGE_NAMES:
+        content = contents.get(name.casefold())
+        if content is not None:
+            sections.append(f"## {name}\n\n{content}")
+    return "\n\n".join(sections) if sections else None

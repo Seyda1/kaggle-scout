@@ -38,6 +38,7 @@ def example_competition() -> Competition:
         category="Featured",
         reward="10,000 USD",
         evaluation_metric="Log Loss",
+        overview="## Description\n\nClassify objects in images from labeled photos.",
     )
 
 
@@ -78,7 +79,10 @@ def test_provider_returns_valid_interpretation_and_sends_expected_request() -> N
     assert payload["format"] == "json"
     assert payload["think"] is False
     assert "Example Vision Competition" in payload["prompt"]
+    assert "Classify objects in images from labeled photos." in payload["prompt"]
     assert "exactly these keys" in payload["prompt"]
+    assert "skills_required must contain only technical skills" in payload["prompt"]
+    assert "Describe the sector only in domain" in payload["prompt"]
 
 
 def test_provider_reuses_interpretation_validation() -> None:

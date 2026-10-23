@@ -18,6 +18,8 @@ class FakeKaggleApi:
         *,
         responses: list[object] | None = None,
         error: Exception | None = None,
+        pages: list[object] | None = None,
+        page_error: Exception | None = None,
     ) -> None:
         self.responses = responses or [
             SimpleNamespace(
@@ -26,9 +28,12 @@ class FakeKaggleApi:
             )
         ]
         self.error = error
+        self.pages = pages or []
+        self.page_error = page_error
         self.authenticated = False
         self.list_arguments: dict[str, object] | None = None
         self.list_calls: list[dict[str, object]] = []
+        self.page_calls: list[str] = []
 
     def authenticate(self) -> None:
         self.authenticated = True
@@ -39,6 +44,18 @@ class FakeKaggleApi:
         self.list_arguments = kwargs
         self.list_calls.append(kwargs)
         return self.responses.pop(0)
+
+    def competition_list_pages(self, competition: str, page_name: str | None = None) -> list[object]:
+        if self.page_error is not None:
+            raise self.page_error
+        self.page_calls.append(competition)
+        if page_name is None:
+            return list(self.pages)
+        return [
+            page
+            for page in self.pages
+            if getattr(page, "name", None) == page_name
+        ]
 
 
 def minimal_api_competition(ref: str) -> object:
@@ -217,3 +234,73 @@ def test_translates_api_failure() -> None:
 def test_rejects_out_of_range_limit(limit: int) -> None:
     with pytest.raises(ValueError, match="limit must be between 1 and 200"):
         KaggleDiscovery(FakeKaggleApi([])).discover(limit=limit)
+
+
+def example_listed_competition() -> Competition:
+    return Competition(
+        ref="https://www.kaggle.com/competitions/example-competition",
+        title="Example Competition",
+        deadline=datetime(2026, 12, 31),
+        team_count=10,
+        description="Short subtitle.",
+        url="https://www.kaggle.com/competitions/example-competition",
+    )
+
+
+def test_load_overview_joins_selected_pages_and_ignores_others() -> None:
+    api = FakeKaggleApi(
+        pages=[
+            SimpleNamespace(name="data-description", content="Do not include."),
+            SimpleNamespace(name="rules", content="Legal text."),
+            SimpleNamespace(name="Evaluation", content="MRR@25 scoring."),
+            SimpleNamespace(name="description", content="Predict SMILES."),
+            SimpleNamespace(name="Background", content="How spectra are made."),
+            SimpleNamespace(name="Timeline", content="Final deadline in December."),
+            SimpleNamespace(name="Prizes", content="$50,000."),
+            SimpleNamespace(name="Code Requirements", content="Notebook only."),
+        ]
+    )
+
+    result = KaggleDiscovery(api).load_overview(example_listed_competition())
+
+    assert api.authenticated is True
+    assert api.page_calls == ["example-competition"]
+    assert result.description == "Short subtitle."
+    assert result.overview is not None
+    assert result.overview.startswith("## Description\n\nPredict SMILES.")
+    assert "## Background\n\nHow spectra are made." in result.overview
+    assert "## Evaluation\n\nMRR@25 scoring." in result.overview
+    assert "## Timeline\n\nFinal deadline in December." in result.overview
+    assert "## Prizes\n\n$50,000." in result.overview
+    assert "## Code Requirements\n\nNotebook only." in result.overview
+    assert "Do not include." not in result.overview
+    assert "Legal text." not in result.overview
+
+
+def test_load_overview_is_absent_when_selected_pages_are_missing() -> None:
+    api = FakeKaggleApi(
+        pages=[SimpleNamespace(name="rules", content="Legal text.")]
+    )
+
+    result = KaggleDiscovery(api).load_overview(example_listed_competition())
+
+    assert result.overview is None
+
+
+def test_load_overview_translates_api_failure() -> None:
+    page_error = RuntimeError("simulated page failure")
+    api = FakeKaggleApi(page_error=page_error)
+
+    with pytest.raises(DiscoveryError) as caught:
+        KaggleDiscovery(api).load_overview(example_listed_competition())
+
+    assert caught.value.__cause__ is page_error
+
+
+def test_discover_does_not_fetch_overview_pages() -> None:
+    api = FakeKaggleApi([minimal_api_competition("only")])
+
+    competitions = KaggleDiscovery(api).discover()
+
+    assert competitions[0].overview is None
+    assert api.page_calls == []
