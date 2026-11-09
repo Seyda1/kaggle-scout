@@ -18,6 +18,9 @@ venv/
 # Local working notes
 docs/decisions.md
 
+# Personal user profile (keep the .example.json file)
+data/user_profile.json
+
 # IDE / editor
 .vscode/
 .idea/

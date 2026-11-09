@@ -1,0 +1,24 @@
+{
+  "skills": [
+    "python",
+    "machine learning",
+    "pandas",
+    "scikit-learn",
+    "feature engineering"
+  ],
+  "experience_level": "intermediate",
+  "interests": [
+    "tabular data",
+    "classification",
+    "consumer behavior",
+    "electric vehicles"
+  ],
+  "preferred_difficulty_levels": [
+    "beginner",
+    "intermediate"
+  ],
+  "learning_goals": [
+    "improve classification modeling",
+    "practice feature engineering"
+  ]
+}

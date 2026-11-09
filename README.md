@@ -1921,6 +1921,27 @@ python -m pytest
 python main.py
 ```
 
+## User profile
+
+Your profile stays on your machine and is not committed.
+
+1. Copy the example file:
+
+```bash
+cp data/user_profile.example.json data/user_profile.json
+```
+
+On Windows PowerShell:
+
+```powershell
+Copy-Item data\user_profile.example.json data\user_profile.json
+```
+
+2. Edit `data/user_profile.json` with your skills, interests, experience level, preferred difficulty levels, and learning goals.
+3. The app loads that file through `load_user_profile()`. Friends do the same with their own copy.
+
+Do not commit `data/user_profile.json` — it is listed in `.gitignore`.
+
 ## Environment variables
 
 Copy `.env.example` to `.env` and fill in values when needed in later phases:
