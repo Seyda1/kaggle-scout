@@ -20,3 +20,4 @@ class Competition:
     date_created: datetime | None = None
     url: str | None = None
     overview: str | None = None
+    launch_date: datetime | None = None

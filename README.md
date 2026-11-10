@@ -1921,6 +1921,10 @@ python -m pytest
 python main.py
 ```
 
+This ranks every active Kaggle competition against your profile and prints the
+report. It needs Kaggle API access and a running Ollama with `qwen3:14b`.
+Add `--email` to also send the report through Gmail (see below).
+
 ## User profile
 
 Your profile stays on your machine and is not committed.
@@ -1951,4 +1955,26 @@ cp .env.example .env
 ```
 
 Do not commit `.env` — it is listed in `.gitignore`.
+
+## Daily email report
+
+1. Turn on 2-Step Verification for your Google account, then create an app
+   password at <https://myaccount.google.com/apppasswords>.
+2. In your local `.env`, set `GMAIL_ADDRESS`, `GMAIL_APP_PASSWORD`, and
+   optionally `REPORT_RECIPIENT` (defaults to `GMAIL_ADDRESS`).
+3. Send one report to check the setup:
+
+```powershell
+python main.py --email
+```
+
+4. Schedule it daily on Windows (default 09:30; pass `-Time "08:00"` to change):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\register_daily_task.ps1
+```
+
+The task runs only while you are logged in. If the PC was off at the scheduled
+time, it runs as soon as possible afterwards. `scripts/run_daily_report.ps1`
+starts Ollama if needed and appends output to `logs/daily_report.log`.
 

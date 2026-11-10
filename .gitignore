@@ -21,6 +21,9 @@ docs/decisions.md
 # Personal user profile (keep the .example.json file)
 data/user_profile.json
 
+# Daily report logs
+logs/
+
 # IDE / editor
 .vscode/
 .idea/

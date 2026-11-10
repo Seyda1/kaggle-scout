@@ -1,9 +1,7 @@
 """Entry point for Kaggle Scout."""
 
-
-def main() -> None:
-    print("Kaggle Scout initialized.")
+from kaggle_scout.cli import main
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())
