@@ -1921,9 +1921,15 @@ python -m pytest
 python main.py
 ```
 
-This ranks every active Kaggle competition against your profile and prints the
+This ranks active Kaggle competitions against your profile and prints the
 report. It needs Kaggle API access and a running Ollama with `qwen3:14b`.
 Add `--email` to also send the report through Gmail (see below).
+
+Kaggle Scout remembers which competitions it already emailed you in
+`data/seen_competitions.json` (local, not committed) and leaves them out of
+later reports. They come back if your profile or the analysis model/prompt
+changes. Use `--all` to include them anyway. Only a successful email updates
+this memory; printing alone does not.
 
 ## User profile
 

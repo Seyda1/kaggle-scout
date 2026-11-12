@@ -107,6 +107,24 @@ def test_run_daily_report_records_failures_and_keeps_going() -> None:
     )
 
 
+def test_run_daily_report_skips_excluded_competitions_entirely() -> None:
+    source = FakeSource([competition("Seen"), competition("New")])
+    interpreter = FakeInterpreter({"New": "high"})
+
+    result = run_daily_report(
+        profile=profile(),
+        source=source,
+        interpreter=interpreter,
+        reference_time=REFERENCE_TIME,
+        include=lambda item: item.title != "Seen",
+    )
+
+    assert interpreter.seen_overviews == ["Overview of New"]
+    assert [item.competition.title for item in result.ranked] == ["New"]
+    assert result.skipped == 1
+    assert result.active_refs == ("Seen", "New")
+
+
 def test_run_daily_report_propagates_discovery_failure() -> None:
     class BrokenSource(FakeSource):
         def discover_active(self, *, reference_time: datetime) -> list[Competition]:

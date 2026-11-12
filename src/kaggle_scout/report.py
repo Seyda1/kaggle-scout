@@ -2,7 +2,7 @@
 
 from collections.abc import Sequence
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import date
 from html import escape
 
 from kaggle_scout.ranking import RankedRecommendation
@@ -14,9 +14,6 @@ _SECTIONS: tuple[tuple[Decision, str], ...] = (
     ("maybe", "Maybe"),
     ("not_recommended", "Not recommended"),
 )
-_DECISION_LABELS: dict[Decision, str] = dict(_SECTIONS)
-_TODAY_LABEL = "Today's competitions"
-_NO_NEW_TODAY = "No new competitions today."
 
 
 @dataclass(frozen=True, slots=True)
@@ -53,17 +50,13 @@ def _reason_line(item: RankedRecommendation) -> str:
     )
 
 
-def _facts_line(item: RankedRecommendation, *, show_launch: bool = False) -> str:
+def _facts_line(item: RankedRecommendation) -> str:
     interpretation = item.interpretation
-    competition = item.competition
-    facts = (
+    deadline = _format_date(item.competition.deadline.date())
+    return (
         f"{interpretation.problem_type} | {interpretation.difficulty}"
-        f" | {interpretation.domain}"
-        f" | deadline {_format_date(competition.deadline.date())}"
+        f" | {interpretation.domain} | deadline {deadline}"
     )
-    if show_launch and competition.launch_date is not None:
-        facts = f"launched {_format_date(competition.launch_date.date())} | {facts}"
-    return facts
 
 
 def _group(
@@ -75,88 +68,72 @@ def _group(
     ]
 
 
-def _launched_since(
-    ranked: Sequence[RankedRecommendation],
-    new_since: datetime,
-) -> list[RankedRecommendation]:
-    return [
-        item
-        for item in ranked
-        if item.competition.launch_date is not None
-        and item.competition.launch_date >= new_since
-    ]
+def _summary_line(ranked_count: int, *, new_only: bool, skipped: int) -> str:
+    if not new_only:
+        return f"{ranked_count} active competitions ranked against your profile."
+    noun, verb = ("competition", "was") if skipped == 1 else ("competitions", "were")
+    already = f" {skipped} {noun} you already received {verb} skipped." if skipped else ""
+    if ranked_count == 0:
+        return f"Nothing new today.{already}"
+    return f"{ranked_count} new for you.{already}"
 
 
 def _subject(
     ranked: Sequence[RankedRecommendation],
     failures: Sequence[str],
     report_date: date,
-    today: Sequence[RankedRecommendation] | None,
+    *,
+    new_only: bool,
 ) -> str:
     day = _format_date(report_date)
     if not ranked and failures:
         return f"Kaggle Scout: no competitions analyzed ({day})"
+    if new_only:
+        if not ranked:
+            return f"Kaggle Scout: nothing new today ({day})"
+        return f"Kaggle Scout: {len(ranked)} new for you ({day})"
     count = sum(1 for item in ranked if item.decision.decision == "recommended")
     noun = "competition" if count == 1 else "competitions"
-    if today:
-        return f"Kaggle Scout: {count} recommended, {len(today)} new today ({day})"
     return f"Kaggle Scout: {count} recommended {noun} ({day})"
-
-
-def _text_item(item: RankedRecommendation, *, today: bool = False) -> list[str]:
-    title = f"{item.score.total_score:.0%}  {item.competition.title}"
-    if today:
-        title = f"{title}  [{_DECISION_LABELS[item.decision.decision]}]"
-    lines = [
-        title,
-        f"     {_facts_line(item, show_launch=today)}",
-        f"     {_signal_line(item)}",
-        f"     {_reason_line(item)}",
-    ]
-    if item.competition.url:
-        lines.append(f"     {item.competition.url}")
-    lines.append("")
-    return lines
 
 
 def _text_body(
     ranked: Sequence[RankedRecommendation],
     failures: Sequence[str],
     report_date: date,
-    today: Sequence[RankedRecommendation] | None,
+    summary: str,
+    notes: Sequence[str],
 ) -> str:
-    lines = [
-        f"Kaggle Scout daily report - {_format_date(report_date)}",
-        f"{len(ranked)} active competitions ranked against your profile.",
-    ]
-    if today is not None:
-        lines += ["", f"{_TODAY_LABEL.upper()} ({len(today)})", ""]
-        if not today:
-            lines.append(_NO_NEW_TODAY)
-        for item in today:
-            lines += _text_item(item, today=True)
+    lines = [f"Kaggle Scout daily report - {_format_date(report_date)}", summary]
+    if notes:
+        lines.append("")
+        lines += [f"Note: {note}" for note in notes]
     for label, items in _group(ranked):
         if not items:
             continue
         lines += ["", f"{label.upper()} ({len(items)})", ""]
         for item in items:
-            lines += _text_item(item)
+            lines.append(f"{item.score.total_score:.0%}  {item.competition.title}")
+            lines.append(f"     {_facts_line(item)}")
+            lines.append(f"     {_signal_line(item)}")
+            lines.append(f"     {_reason_line(item)}")
+            if item.competition.url:
+                lines.append(f"     {item.competition.url}")
+            lines.append("")
     if failures:
         lines += ["", f"COULD NOT ANALYZE ({len(failures)})", ""]
         lines += [f"- {failure}" for failure in failures]
     return "\n".join(lines).rstrip() + "\n"
 
 
-def _html_item(item: RankedRecommendation, *, today: bool = False) -> str:
+def _html_item(item: RankedRecommendation) -> str:
     title = escape(item.competition.title)
     if item.competition.url:
         title = f'<a href="{escape(item.competition.url)}">{title}</a>'
-    if today:
-        title = f"{title} [{escape(_DECISION_LABELS[item.decision.decision])}]"
     return (
         "<li style=\"margin-bottom:12px\">"
         f"<strong>{item.score.total_score:.0%}</strong> {title}<br>"
-        f"<small>{escape(_facts_line(item, show_launch=today))}<br>"
+        f"<small>{escape(_facts_line(item))}<br>"
         f"{escape(_signal_line(item))}<br>"
         f"{escape(_reason_line(item))}</small>"
         "</li>"
@@ -167,21 +144,15 @@ def _html_body(
     ranked: Sequence[RankedRecommendation],
     failures: Sequence[str],
     report_date: date,
-    today: Sequence[RankedRecommendation] | None,
+    summary: str,
+    notes: Sequence[str],
 ) -> str:
     parts = [
         "<html><body style=\"font-family:Segoe UI,Arial,sans-serif\">",
         f"<h2>Kaggle Scout daily report - {_format_date(report_date)}</h2>",
-        f"<p>{len(ranked)} active competitions ranked against your profile.</p>",
+        f"<p>{escape(summary)}</p>",
     ]
-    if today is not None:
-        parts.append(f"<h3>{escape(_TODAY_LABEL)} ({len(today)})</h3>")
-        if today:
-            parts.append("<ul>")
-            parts += [_html_item(item, today=True) for item in today]
-            parts.append("</ul>")
-        else:
-            parts.append(f"<p>{_NO_NEW_TODAY}</p>")
+    parts += [f"<p><em>Note: {escape(note)}</em></p>" for note in notes]
     for label, items in _group(ranked):
         if not items:
             continue
@@ -201,18 +172,20 @@ def build_report(
     *,
     report_date: date,
     failures: Sequence[str] = (),
-    new_since: datetime | None = None,
+    new_only: bool = False,
+    skipped: int = 0,
+    notes: Sequence[str] = (),
 ) -> EmailReport:
     """Group ranked competitions by decision, keeping their score order.
 
-    When ``new_since`` is given, competitions launched at or after it are also
-    listed first under "Today's competitions".
+    With ``new_only``, the report describes only competitions not sent before;
+    ``skipped`` counts the active ones left out because they were already sent.
     """
-    today = None if new_since is None else _launched_since(ranked, new_since)
+    summary = _summary_line(len(ranked), new_only=new_only, skipped=skipped)
     return EmailReport(
-        subject=_subject(ranked, failures, report_date, today),
-        text=_text_body(ranked, failures, report_date, today),
-        html=_html_body(ranked, failures, report_date, today),
+        subject=_subject(ranked, failures, report_date, new_only=new_only),
+        text=_text_body(ranked, failures, report_date, summary, notes),
+        html=_html_body(ranked, failures, report_date, summary, notes),
     )
 
 

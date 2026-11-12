@@ -1,5 +1,6 @@
 """Discover, interpret, and rank active competitions for one profile."""
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Protocol
@@ -26,6 +27,8 @@ class DailyReportResult:
 
     ranked: list[RankedRecommendation]
     failures: tuple[str, ...]
+    active_refs: tuple[str, ...] = ()
+    skipped: int = 0
 
 
 def run_daily_report(
@@ -34,13 +37,19 @@ def run_daily_report(
     source: ActiveCompetitionSource,
     interpreter: CompetitionInterpreter,
     reference_time: datetime,
+    include: Callable[[Competition], bool] = lambda competition: True,
 ) -> DailyReportResult:
-    """Rank every active competition; one failed competition does not stop the run."""
+    """Rank active competitions that pass ``include``.
+
+    Excluded competitions are not downloaded or analyzed. One failed
+    competition does not stop the run.
+    """
     active = source.discover_active(reference_time=reference_time)
+    selected = [competition for competition in active if include(competition)]
 
     interpreted: list[tuple[Competition, CompetitionInterpretation]] = []
     failures: list[str] = []
-    for competition in active:
+    for competition in selected:
         try:
             detailed = source.load_overview(competition)
             interpreted.append((detailed, interpreter.analyze(detailed)))
@@ -50,4 +59,6 @@ def run_daily_report(
     return DailyReportResult(
         ranked=rank_competitions(profile, interpreted),
         failures=tuple(failures),
+        active_refs=tuple(competition.ref for competition in active),
+        skipped=len(active) - len(selected),
     )

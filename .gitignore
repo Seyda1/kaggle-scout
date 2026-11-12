@@ -21,8 +21,9 @@ docs/decisions.md
 # Personal user profile (keep the .example.json file)
 data/user_profile.json
 
-# Daily report logs
+# Daily report logs and memory of competitions already sent
 logs/
+data/seen_competitions.json
 
 # IDE / editor
 .vscode/

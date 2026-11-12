@@ -21,6 +21,10 @@ class OllamaCompetitionProvider:
         self._endpoint = f"{base_url.rstrip('/')}/api/generate"
         self._timeout = timeout
 
+    @property
+    def model(self) -> str:
+        return self._model
+
     def interpret(self, competition: Competition) -> CompetitionInterpretation:
         """Request and validate one structured competition interpretation."""
         payload = {
@@ -46,8 +50,28 @@ class OllamaCompetitionProvider:
 
         return CompetitionInterpretation(**interpretation_data)
 
-    @staticmethod
-    def _build_prompt(competition: Competition) -> str:
+    INSTRUCTIONS = (
+        "Analyze this Kaggle competition. Return only one JSON object with "
+        "exactly these keys: problem_type, domain, skills_required, "
+        "difficulty, learning_value, reasoning.\n"
+        "problem_type must be one of: classification, regression, "
+        "time_series, nlp, computer_vision, recommendation, clustering, "
+        "reinforcement_learning, other, unknown.\n"
+        "difficulty must be one of: beginner, intermediate, advanced, "
+        "unknown.\n"
+        "learning_value must be one of: low, medium, high, unknown.\n"
+        "domain and reasoning must be strings. skills_required must be an "
+        "array of strings. Keep reasoning short.\n"
+        "skills_required must contain only technical skills needed to "
+        "participate, such as python, machine learning, data analysis, "
+        "deep learning, or feature engineering. Do not include industry, "
+        "sector, or subject-matter knowledge (for example healthcare, "
+        "automotive, biology, or chemistry knowledge). Describe the "
+        "sector only in domain.\n"
+    )
+
+    @classmethod
+    def _build_prompt(cls, competition: Competition) -> str:
         competition_data = {
             "title": competition.title,
             "description": competition.description,
@@ -59,23 +83,4 @@ class OllamaCompetitionProvider:
             "evaluation_metric": competition.evaluation_metric,
             "team_count": competition.team_count,
         }
-        return (
-            "Analyze this Kaggle competition. Return only one JSON object with "
-            "exactly these keys: problem_type, domain, skills_required, "
-            "difficulty, learning_value, reasoning.\n"
-            "problem_type must be one of: classification, regression, "
-            "time_series, nlp, computer_vision, recommendation, clustering, "
-            "reinforcement_learning, other, unknown.\n"
-            "difficulty must be one of: beginner, intermediate, advanced, "
-            "unknown.\n"
-            "learning_value must be one of: low, medium, high, unknown.\n"
-            "domain and reasoning must be strings. skills_required must be an "
-            "array of strings. Keep reasoning short.\n"
-            "skills_required must contain only technical skills needed to "
-            "participate, such as python, machine learning, data analysis, "
-            "deep learning, or feature engineering. Do not include industry, "
-            "sector, or subject-matter knowledge (for example healthcare, "
-            "automotive, biology, or chemistry knowledge). Describe the "
-            "sector only in domain.\n"
-            f"Competition: {json.dumps(competition_data)}"
-        )
+        return f"{cls.INSTRUCTIONS}Competition: {json.dumps(competition_data)}"

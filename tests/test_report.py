@@ -22,14 +22,13 @@ def profile() -> UserProfile:
     )
 
 
-def competition(title: str, launch_date: datetime | None = None) -> Competition:
+def competition(title: str) -> Competition:
     return Competition(
         ref=title,
         title=title,
         deadline=datetime(2026, 12, 31),
         team_count=1,
         url=f"https://www.kaggle.com/competitions/{title.lower()}",
-        launch_date=launch_date,
     )
 
 
@@ -114,82 +113,43 @@ def test_html_report_escapes_titles_and_links_competitions() -> None:
     assert '<a href="https://www.kaggle.com/competitions/&lt;tag&gt; &amp; co">' in html
 
 
-NEW_SINCE = datetime(2026, 11, 8, 6, 30)
-
-
-def ranked_with_launches():
-    return rank_competitions(
-        profile(),
-        [
-            (competition("Fresh", datetime(2026, 11, 8, 20, 0)), interpretation()),
-            (
-                competition("Edge", NEW_SINCE),
-                interpretation(problem_type="regression", learning_value="medium"),
-            ),
-            (competition("Older", datetime(2026, 11, 8, 6, 29)), interpretation()),
-            (competition("Undated"), interpretation()),
-        ],
-    )
-
-
-def test_today_section_lists_launches_since_cutoff_with_decision() -> None:
-    report = build_report(
-        ranked_with_launches(),
-        report_date=REPORT_DATE,
-        new_since=NEW_SINCE,
-    )
-
-    text = report.text
-    today = text[text.index("TODAY'S COMPETITIONS (2)") : text.index("RECOMMENDED (")]
-    assert "Fresh  [Recommended]" in today
-    assert "Edge  [Maybe]" in today
-    assert "Older" not in today
-    assert "Undated" not in today
-    assert "launched 8 Nov 2026 | classification" in today
-    assert report.subject == "Kaggle Scout: 3 recommended, 2 new today (9 Nov 2026)"
-
-
-def test_today_competitions_also_stay_in_their_decision_section() -> None:
-    text = build_report(
-        ranked_with_launches(),
-        report_date=REPORT_DATE,
-        new_since=NEW_SINCE,
-    ).text
-
-    recommended = text[text.index("RECOMMENDED (3)") : text.index("MAYBE (1)")]
-    assert "Fresh" in recommended
-    assert "Edge" in text[text.index("MAYBE (1)") :]
-
-
-def test_today_section_says_when_nothing_launched() -> None:
+def test_new_only_report_counts_new_and_skipped_competitions() -> None:
     report = build_report(
         ranked(),
         report_date=REPORT_DATE,
-        new_since=NEW_SINCE,
+        new_only=True,
+        skipped=18,
     )
 
-    assert "TODAY'S COMPETITIONS (0)" in report.text
-    assert "No new competitions today." in report.text
-    assert "No new competitions today." in report.html
-    assert report.subject == "Kaggle Scout: 1 recommended competition (9 Nov 2026)"
+    assert report.subject == "Kaggle Scout: 3 new for you (9 Nov 2026)"
+    assert (
+        "3 new for you. 18 competitions you already received were skipped."
+        in report.text
+    )
+    assert "RECOMMENDED (1)" in report.text
 
 
-def test_today_section_is_omitted_without_cutoff() -> None:
-    report = build_report(ranked_with_launches(), report_date=REPORT_DATE)
+def test_new_only_report_says_nothing_new_today() -> None:
+    report = build_report([], report_date=REPORT_DATE, new_only=True, skipped=1)
 
-    assert "TODAY'S COMPETITIONS" not in report.text
-    assert "Today&#x27;s competitions" not in report.html
+    assert report.subject == "Kaggle Scout: nothing new today (9 Nov 2026)"
+    assert (
+        "Nothing new today. 1 competition you already received was skipped."
+        in report.text
+    )
+    assert "Nothing new today." in report.html
 
 
-def test_html_today_section_lists_new_competitions() -> None:
-    html = build_report(
-        ranked_with_launches(),
+def test_report_shows_change_notes() -> None:
+    report = build_report(
+        ranked(),
         report_date=REPORT_DATE,
-        new_since=NEW_SINCE,
-    ).html
+        new_only=True,
+        notes=("Your profile changed.",),
+    )
 
-    assert "<h3>Today&#x27;s competitions (2)</h3>" in html
-    assert "</a> [Recommended]" in html
+    assert "Note: Your profile changed." in report.text
+    assert "<em>Note: Your profile changed.</em>" in report.html
 
 
 def test_failure_report_names_step_and_error() -> None:
