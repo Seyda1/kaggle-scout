@@ -40,30 +40,55 @@ def _signal_line(item: RankedRecommendation) -> str:
 
 def _reason_line(item: RankedRecommendation) -> str:
     explanation = item.explanation
+    interpretation = item.interpretation
+    skill = explanation.skill_reason
+    if interpretation.skills_you_have or interpretation.skills_to_learn:
+        have = ", ".join(interpretation.skills_you_have) or "none"
+        learn = ", ".join(interpretation.skills_to_learn) or "none"
+        skill = f"{skill} (you have: {have}; you'd learn: {learn})"
+    learning = explanation.learning_value_reason
+    if interpretation.matched_goals:
+        learning = f"{learning} ({', '.join(interpretation.matched_goals)})"
     return "; ".join(
         (
-            explanation.skill_reason,
+            skill,
             explanation.difficulty_reason,
             explanation.interest_reason,
-            explanation.learning_value_reason,
+            learning,
         )
     )
 
 
 def _facts_line(item: RankedRecommendation) -> str:
     interpretation = item.interpretation
-    deadline = _format_date(item.competition.deadline.date())
+    competition = item.competition
+    dates = f"deadline {_format_date(competition.deadline.date())}"
+    if competition.start_date is not None:
+        dates = f"started {_format_date(competition.start_date.date())} | {dates}"
     return (
         f"{interpretation.problem_type} | {interpretation.difficulty}"
-        f" | {interpretation.domain} | deadline {deadline}"
+        f" | {interpretation.domain} | {dates}"
     )
+
+
+def _newest_first(items: list[RankedRecommendation]) -> list[RankedRecommendation]:
+    # Stable sort keeps the incoming score order for equal start dates.
+    dated = [item for item in items if item.competition.start_date is not None]
+    undated = [item for item in items if item.competition.start_date is None]
+    dated.sort(key=lambda item: item.competition.start_date, reverse=True)
+    return dated + undated
 
 
 def _group(
     ranked: Sequence[RankedRecommendation],
 ) -> list[tuple[str, list[RankedRecommendation]]]:
     return [
-        (label, [item for item in ranked if item.decision.decision == decision])
+        (
+            label,
+            _newest_first(
+                [item for item in ranked if item.decision.decision == decision]
+            ),
+        )
         for decision, label in _SECTIONS
     ]
 
@@ -176,7 +201,7 @@ def build_report(
     skipped: int = 0,
     notes: Sequence[str] = (),
 ) -> EmailReport:
-    """Group ranked competitions by decision, keeping their score order.
+    """Group competitions by decision, newest start date first in each group.
 
     With ``new_only``, the report describes only competitions not sent before;
     ``skipped`` counts the active ones left out because they were already sent.

@@ -78,11 +78,119 @@ def test_provider_returns_valid_interpretation_and_sends_expected_request() -> N
     assert payload["stream"] is False
     assert payload["format"] == "json"
     assert payload["think"] is False
+    assert payload["options"] == {"temperature": 0, "seed": 42}
     assert "Example Vision Competition" in payload["prompt"]
     assert "Classify objects in images from labeled photos." in payload["prompt"]
     assert "exactly these keys" in payload["prompt"]
     assert "skills_required must contain only technical skills" in payload["prompt"]
     assert "Describe the sector only in domain" in payload["prompt"]
+    assert "team_count" not in payload["prompt"]
+
+
+def test_without_learning_goals_the_prompt_has_no_goal_rules() -> None:
+    provider = OllamaCompetitionProvider()
+
+    with patch(
+        "kaggle_scout.analysis.ollama_provider.urlopen",
+        return_value=FakeHttpResponse(ollama_body()),
+    ) as mocked_urlopen:
+        result = provider.interpret(example_competition())
+
+    prompt = json.loads(mocked_urlopen.call_args.args[0].data.decode("utf-8"))["prompt"]
+    assert "matched_goals" not in prompt
+    assert "User learning goals" not in prompt
+    assert provider.instructions == OllamaCompetitionProvider.INSTRUCTIONS
+    assert result.matched_goals == ()
+
+
+def test_learning_goals_are_sent_and_matched_goals_returned() -> None:
+    provider = OllamaCompetitionProvider(
+        learning_goals=("practice feature engineering", "learn computer vision")
+    )
+
+    with patch(
+        "kaggle_scout.analysis.ollama_provider.urlopen",
+        return_value=FakeHttpResponse(
+            ollama_body(matched_goals=["learn computer vision"])
+        ),
+    ) as mocked_urlopen:
+        result = provider.interpret(example_competition())
+
+    prompt = json.loads(mocked_urlopen.call_args.args[0].data.decode("utf-8"))["prompt"]
+    assert (
+        'User learning goals: ["practice feature engineering", "learn computer vision"]'
+        in prompt
+    )
+    assert "only when that goal is the main work" in prompt
+    assert provider.instructions.endswith(OllamaCompetitionProvider.GOAL_INSTRUCTIONS)
+    assert result.matched_goals == ("learn computer vision",)
+
+
+def test_matched_goals_keep_only_the_users_own_goals() -> None:
+    provider = OllamaCompetitionProvider(
+        learning_goals=("Practice feature engineering", "learn computer vision")
+    )
+
+    with patch(
+        "kaggle_scout.analysis.ollama_provider.urlopen",
+        return_value=FakeHttpResponse(
+            ollama_body(
+                matched_goals=[
+                    "learn computer vision",
+                    "practice feature engineering ",
+                    "win a medal",
+                ]
+            )
+        ),
+    ):
+        result = provider.interpret(example_competition())
+
+    assert result.matched_goals == (
+        "Practice feature engineering",
+        "learn computer vision",
+    )
+
+
+def test_user_skills_are_sent_and_skill_breakdown_returned() -> None:
+    provider = OllamaCompetitionProvider(
+        skills=("python", "pandas", "scikit-learn")
+    )
+
+    with patch(
+        "kaggle_scout.analysis.ollama_provider.urlopen",
+        return_value=FakeHttpResponse(
+            ollama_body(
+                skills_you_have=["python", "pandas"],
+                skills_to_learn=["deep learning"],
+            )
+        ),
+    ) as mocked_urlopen:
+        result = provider.interpret(example_competition())
+
+    prompt = json.loads(mocked_urlopen.call_args.args[0].data.decode("utf-8"))["prompt"]
+    assert 'User skills: ["python", "pandas", "scikit-learn"]' in prompt
+    assert "this competition actually requires" in prompt
+    assert provider.instructions.endswith(OllamaCompetitionProvider.SKILL_INSTRUCTIONS)
+    assert result.skills_you_have == ("python", "pandas")
+    assert result.skills_to_learn == ("deep learning",)
+
+
+def test_skill_breakdown_keeps_only_known_have_and_drops_owned_from_learn() -> None:
+    provider = OllamaCompetitionProvider(skills=("Python", "pandas"))
+
+    with patch(
+        "kaggle_scout.analysis.ollama_provider.urlopen",
+        return_value=FakeHttpResponse(
+            ollama_body(
+                skills_you_have=["python", "made up skill"],
+                skills_to_learn=["pandas", "deep learning", " Deep Learning "],
+            )
+        ),
+    ):
+        result = provider.interpret(example_competition())
+
+    assert result.skills_you_have == ("Python",)
+    assert result.skills_to_learn == ("deep learning",)
 
 
 def test_provider_reuses_interpretation_validation() -> None:

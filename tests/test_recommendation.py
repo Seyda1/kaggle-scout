@@ -60,6 +60,33 @@ def test_skill_match_is_fraction_of_unique_required_skills() -> None:
     assert result.skill_match == pytest.approx(2 / 3)
 
 
+def test_qwen_skill_breakdown_overrides_exact_matching() -> None:
+    # Exact match would be 1/3 (only python); Qwen says pandas covers data analysis.
+    result = score(
+        profile_with(skills=("python", "pandas")),
+        interpretation_with(
+            skills_required=("python", "data analysis", "xgboost"),
+            skills_you_have=("python", "pandas"),
+            skills_to_learn=("xgboost",),
+        ),
+    )
+
+    assert result.skill_match == pytest.approx(2 / 3)
+
+
+def test_qwen_skill_breakdown_all_covered_is_full_match() -> None:
+    result = score(
+        profile_with(skills=("python", "pandas")),
+        interpretation_with(
+            skills_required=("python", "data analysis"),
+            skills_you_have=("python", "pandas"),
+            skills_to_learn=(),
+        ),
+    )
+
+    assert result.skill_match == 1.0
+
+
 def test_duplicate_skills_count_once() -> None:
     result = score(
         profile_with(skills=("python", "PYTHON")),

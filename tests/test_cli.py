@@ -67,7 +67,10 @@ def env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> SimpleNamespace:
         profile=make_profile(),
         source=FakeSource(),
         interpreter=FakeInterpreter(),
-        provider=SimpleNamespace(model="qwen3:14b", INSTRUCTIONS="Analyze."),
+        provider=SimpleNamespace(
+            model="qwen3:14b", instructions="Analyze.", OPTIONS={"temperature": 0}
+        ),
+        provider_kwargs={},
         sent=[],
         seen_path=tmp_path / "seen.json",
     )
@@ -75,9 +78,11 @@ def env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> SimpleNamespace:
     monkeypatch.setattr(cli, "SEEN_PATH", state.seen_path)
     monkeypatch.setattr(cli, "load_user_profile", lambda: state.profile)
     monkeypatch.setattr(cli, "KaggleDiscovery", lambda: state.source)
-    monkeypatch.setattr(
-        cli, "OllamaCompetitionProvider", lambda **kwargs: state.provider
-    )
+    def make_provider(**kwargs: object) -> SimpleNamespace:
+        state.provider_kwargs = kwargs
+        return state.provider
+
+    monkeypatch.setattr(cli, "OllamaCompetitionProvider", make_provider)
     monkeypatch.setattr(cli, "LLMCompetitionAnalyzer", lambda provider: state.interpreter)
     monkeypatch.setattr(
         cli, "send_report", lambda settings, report: state.sent.append((settings, report))
@@ -86,6 +91,15 @@ def env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> SimpleNamespace:
     monkeypatch.setenv("GMAIL_APP_PASSWORD", "secret")
     monkeypatch.delenv("REPORT_RECIPIENT", raising=False)
     return state
+
+
+def test_learning_goals_and_skills_from_profile_are_given_to_qwen(
+    env: SimpleNamespace,
+) -> None:
+    cli.main([])
+
+    assert env.provider_kwargs["learning_goals"] == ("practice",)
+    assert env.provider_kwargs["skills"] == ("python",)
 
 
 def test_print_only_does_not_send_or_remember(
@@ -153,7 +167,9 @@ def test_model_or_prompt_change_analyzes_sent_competitions_again(
     env: SimpleNamespace,
 ) -> None:
     cli.main(["--email"])
-    env.provider = SimpleNamespace(model="qwen3:14b", INSTRUCTIONS="Analyze better.")
+    env.provider = SimpleNamespace(
+        model="qwen3:14b", instructions="Analyze better.", OPTIONS={"temperature": 0}
+    )
     env.interpreter.analyzed.clear()
 
     assert cli.main(["--email"]) == 0

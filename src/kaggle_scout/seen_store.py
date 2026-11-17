@@ -2,7 +2,7 @@
 
 import hashlib
 import json
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from dataclasses import asdict, dataclass
 from datetime import date
 from pathlib import Path
@@ -42,10 +42,12 @@ class SetupFingerprint:
         *,
         model: str,
         instructions: str,
+        options: Mapping[str, object] | None = None,
     ) -> "SetupFingerprint":
+        settings = json.dumps(dict(options or {}), sort_keys=True)
         return cls(
             profile=_short_hash(json.dumps(asdict(profile), sort_keys=True)),
-            analysis=_short_hash(f"{model}\n{instructions}"),
+            analysis=_short_hash(f"{model}\n{instructions}\n{settings}"),
         )
 
 

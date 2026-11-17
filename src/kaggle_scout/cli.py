@@ -35,11 +35,16 @@ def _build_report(report_date: date, *, show_all: bool) -> _Run:
     step = "loading your profile"
     try:
         profile = load_user_profile()
-        provider = OllamaCompetitionProvider(timeout=180.0)
+        provider = OllamaCompetitionProvider(
+            timeout=180.0,
+            learning_goals=profile.learning_goals,
+            skills=profile.skills,
+        )
         fingerprint = SetupFingerprint.of(
             profile,
             model=provider.model,
-            instructions=provider.INSTRUCTIONS,
+            instructions=provider.instructions,
+            options=provider.OPTIONS,
         )
         step = "reading the list of competitions already sent"
         memory = SeenStore.load(SEEN_PATH)

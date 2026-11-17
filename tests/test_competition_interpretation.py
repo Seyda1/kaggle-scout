@@ -92,6 +92,28 @@ def test_skills_required_is_immutable() -> None:
         setattr(interpretation, "skills_required", ("python",))
 
 
+def test_matched_goals_default_to_empty_and_become_a_tuple() -> None:
+    assert interpretation_with().matched_goals == ()
+    assert interpretation_with(matched_goals=["practice"]).matched_goals == (
+        "practice",
+    )
+
+
+def test_skill_breakdown_fields_default_to_empty_and_become_tuples() -> None:
+    assert interpretation_with().skills_you_have == ()
+    assert interpretation_with().skills_to_learn == ()
+    assert interpretation_with(skills_you_have=["python"]).skills_you_have == (
+        "python",
+    )
+    assert interpretation_with(skills_to_learn=["sql"]).skills_to_learn == ("sql",)
+
+
+@pytest.mark.parametrize("matched_goals", ("practice", ("practice", 1)))
+def test_matched_goals_must_be_strings_in_a_collection(matched_goals: object) -> None:
+    with pytest.raises(TypeError, match="matched_goals"):
+        interpretation_with(matched_goals=matched_goals)
+
+
 @pytest.mark.parametrize(
     "missing_field",
     (

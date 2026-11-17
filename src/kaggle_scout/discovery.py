@@ -55,6 +55,9 @@ def map_competition(api_competition: object) -> Competition:
     deadline = _required_value(api_competition, "deadline")
     if not isinstance(deadline, datetime):
         raise TypeError("Kaggle competition deadline must be a datetime")
+    # enabled_date is when the competition went public; date_created is the
+    # draft and can be months earlier.
+    start_date = getattr(api_competition, "enabled_date", None)
 
     return Competition(
         ref=str(_required_value(api_competition, "ref")),
@@ -70,6 +73,7 @@ def map_competition(api_competition: object) -> Competition:
         date_created=getattr(api_competition, "date_created", None),
         team_count=int(getattr(api_competition, "team_count", 0) or 0),
         url=_optional_text(getattr(api_competition, "url", None)),
+        start_date=start_date if isinstance(start_date, datetime) else None,
     )
 
 

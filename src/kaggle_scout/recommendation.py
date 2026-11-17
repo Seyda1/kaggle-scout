@@ -31,10 +31,7 @@ class RecommendationEngine:
         interpretation: CompetitionInterpretation,
     ) -> RecommendationScore:
         """Return the signal breakdown and weighted score."""
-        skill_match = self._score_skills(
-            profile.skills,
-            interpretation.skills_required,
-        )
+        skill_match = self._score_skills(profile.skills, interpretation)
         difficulty_match = self._score_difficulty(
             profile.preferred_difficulty_levels,
             interpretation.difficulty,
@@ -69,6 +66,19 @@ class RecommendationEngine:
 
     @classmethod
     def _score_skills(
+        cls,
+        user_skills: tuple[str, ...],
+        interpretation: CompetitionInterpretation,
+    ) -> float:
+        # Prefer Qwen's have/learn lists when present (Option C, step 5).
+        have = interpretation.skills_you_have
+        learn = interpretation.skills_to_learn
+        if have or learn:
+            return len(have) / (len(have) + len(learn))
+        return cls._score_skills_exact(user_skills, interpretation.skills_required)
+
+    @classmethod
+    def _score_skills_exact(
         cls,
         user_skills: tuple[str, ...],
         required_skills: tuple[str, ...],

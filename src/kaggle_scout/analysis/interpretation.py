@@ -34,6 +34,9 @@ class CompetitionInterpretation:
     difficulty: Difficulty
     learning_value: LearningValue
     reasoning: str
+    matched_goals: tuple[str, ...] = ()
+    skills_you_have: tuple[str, ...] = ()
+    skills_to_learn: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         self._validate_choice(
@@ -48,19 +51,41 @@ class CompetitionInterpretation:
             raise TypeError("domain must be a string")
         if not isinstance(self.reasoning, str):
             raise TypeError("reasoning must be a string")
-        if isinstance(self.skills_required, str):
-            raise TypeError("skills_required must be a collection of strings")
 
+        object.__setattr__(
+            self,
+            "skills_required",
+            self._string_tuple("skills_required", self.skills_required),
+        )
+        object.__setattr__(
+            self,
+            "matched_goals",
+            self._string_tuple("matched_goals", self.matched_goals),
+        )
+        object.__setattr__(
+            self,
+            "skills_you_have",
+            self._string_tuple("skills_you_have", self.skills_you_have),
+        )
+        object.__setattr__(
+            self,
+            "skills_to_learn",
+            self._string_tuple("skills_to_learn", self.skills_to_learn),
+        )
+
+    @staticmethod
+    def _string_tuple(field_name: str, values: object) -> tuple[str, ...]:
+        if isinstance(values, str):
+            raise TypeError(f"{field_name} must be a collection of strings")
         try:
-            skills = tuple(self.skills_required)
+            items = tuple(values)  # type: ignore[arg-type]
         except TypeError as error:
             raise TypeError(
-                "skills_required must be a collection of strings"
+                f"{field_name} must be a collection of strings"
             ) from error
-        if not all(isinstance(skill, str) for skill in skills):
-            raise TypeError("skills_required must contain only strings")
-
-        object.__setattr__(self, "skills_required", skills)
+        if not all(isinstance(item, str) for item in items):
+            raise TypeError(f"{field_name} must contain only strings")
+        return items
 
     @staticmethod
     def _validate_choice(

@@ -64,6 +64,7 @@ def test_fingerprint_changes_with_profile_model_or_instructions() -> None:
     assert fingerprint(profile=profile(("python", "sql"))).analysis == base.analysis
     assert fingerprint(model="qwen3:8b").analysis != base.analysis
     assert fingerprint(instructions="Analyze better.").analysis != base.analysis
+    assert fingerprint(options={"temperature": 0}).analysis != base.analysis
 
 
 def test_record_and_is_current() -> None:

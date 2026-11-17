@@ -80,6 +80,91 @@ def test_report_groups_competitions_by_decision_in_score_order() -> None:
     assert "skill 1.00 · difficulty 1.00 · interest 1.00 · learning 1.00" in text
 
 
+def test_report_shows_start_date_when_known() -> None:
+    started = Competition(
+        ref="new",
+        title="New",
+        deadline=datetime(2026, 11, 30),
+        team_count=1,
+        start_date=datetime(2026, 11, 1, 9, 0),
+    )
+    items = rank_competitions(profile(), [(started, interpretation())])
+
+    report = build_report(items, report_date=REPORT_DATE)
+
+    assert "started 1 Nov 2026 | deadline 30 Nov 2026" in report.text
+    assert "started 1 Nov 2026 | deadline 30 Nov 2026" in report.html
+    assert "started" not in build_report(ranked(), report_date=REPORT_DATE).text
+
+
+def test_matched_goals_are_shown_after_the_learning_reason() -> None:
+    items = rank_competitions(
+        profile(),
+        [
+            (
+                competition("Goal"),
+                interpretation(matched_goals=("practice", "learn <vision>")),
+            ),
+            (competition("NoGoal"), interpretation(learning_value="low")),
+        ],
+    )
+
+    report = build_report(items, report_date=REPORT_DATE)
+
+    assert "High learning value (practice, learn <vision>)" in report.text
+    assert "Low learning value\n" in report.text
+    assert "High learning value (practice, learn &lt;vision&gt;)" in report.html
+
+
+def test_skill_breakdown_is_shown_after_the_skill_reason() -> None:
+    items = rank_competitions(
+        profile(),
+        [
+            (
+                competition("Skills"),
+                interpretation(
+                    skills_you_have=("python",),
+                    skills_to_learn=("deep learning",),
+                ),
+            ),
+        ],
+    )
+
+    report = build_report(items, report_date=REPORT_DATE)
+
+    assert (
+        "Partial skill match (you have: python; you'd learn: deep learning)"
+        in report.text
+    )
+
+
+def test_each_section_lists_newest_start_date_first() -> None:
+    def dated(title: str, start: datetime | None) -> Competition:
+        return Competition(
+            ref=title,
+            title=title,
+            deadline=datetime(2030, 1, 1),
+            team_count=1,
+            start_date=start,
+        )
+
+    items = rank_competitions(
+        profile(),
+        [
+            (dated("Old high", datetime(2012, 9, 28)), interpretation()),
+            (dated("Undated", None), interpretation()),
+            (dated("Newest", datetime(2026, 11, 9)), interpretation(learning_value="medium")),
+            (dated("Same day A", datetime(2026, 11, 1)), interpretation()),
+            (dated("Same day B", datetime(2026, 11, 1)), interpretation(learning_value="medium")),
+        ],
+    )
+
+    text = build_report(items, report_date=REPORT_DATE).text
+    order = ["Newest", "Same day A", "Same day B", "Old high", "Undated"]
+    positions = [text.index(f"  {title}\n") for title in order]
+    assert positions == sorted(positions)
+
+
 def test_report_lists_failures_and_skips_empty_sections() -> None:
     items = [item for item in ranked() if item.competition.title == "Strong"]
 

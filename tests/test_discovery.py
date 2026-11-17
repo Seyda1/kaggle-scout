@@ -70,6 +70,7 @@ def minimal_api_competition(ref: str) -> object:
 def test_discovers_and_maps_complete_competition() -> None:
     deadline = datetime(2026, 12, 31, 23, 59)
     date_created = datetime(2026, 9, 1, 12, 30)
+    enabled_date = datetime(2026, 9, 3, 9, 0)
     api_competition = SimpleNamespace(
         ref="example-competition",
         title="Example Competition",
@@ -80,6 +81,7 @@ def test_discovers_and_maps_complete_competition() -> None:
         reward="10,000 USD",
         evaluation_metric="RMSE",
         date_created=date_created,
+        enabled_date=enabled_date,
         team_count=125,
         url="https://www.kaggle.com/competitions/example-competition",
     )
@@ -99,6 +101,7 @@ def test_discovers_and_maps_complete_competition() -> None:
             date_created=date_created,
             team_count=125,
             url="https://www.kaggle.com/competitions/example-competition",
+            start_date=enabled_date,
         )
     ]
 
@@ -114,6 +117,7 @@ def test_maps_missing_optional_fields_safely() -> None:
         reward=None,
         evaluation_metric=None,
         date_created=None,
+        enabled_date="not a date",
         team_count=0,
         url="",
     )
@@ -128,6 +132,7 @@ def test_maps_missing_optional_fields_safely() -> None:
     assert competition.date_created is None
     assert competition.team_count == 0
     assert competition.url is None
+    assert competition.start_date is None
 
 
 def test_requests_expected_page_configuration() -> None:
