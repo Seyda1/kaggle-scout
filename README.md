@@ -2,7 +2,7 @@
 
 **Kaggle Scout** is a personalized AI agent that discovers, analyzes, and recommends Kaggle competitions based on a user's skills, interests, experience, and learning goals.
 
-The project is also a hands-on learning journey for understanding how to design, build, evaluate, and improve AI agents.
+
 
 > **Goal:** Build an agent that doesn't just tell you what competitions exist, but decides which competitions are actually worth your time.
 
