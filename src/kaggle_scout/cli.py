@@ -39,6 +39,7 @@ def _build_report(report_date: date, *, show_all: bool) -> _Run:
             timeout=180.0,
             learning_goals=profile.learning_goals,
             skills=profile.skills,
+            interests=profile.interests,
         )
         fingerprint = SetupFingerprint.of(
             profile,

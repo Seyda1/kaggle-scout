@@ -37,6 +37,7 @@ class CompetitionInterpretation:
     matched_goals: tuple[str, ...] = ()
     skills_you_have: tuple[str, ...] = ()
     skills_to_learn: tuple[str, ...] = ()
+    matched_interests: tuple[str, ...] | None = None
 
     def __post_init__(self) -> None:
         self._validate_choice(
@@ -72,6 +73,12 @@ class CompetitionInterpretation:
             "skills_to_learn",
             self._string_tuple("skills_to_learn", self.skills_to_learn),
         )
+        if self.matched_interests is not None:
+            object.__setattr__(
+                self,
+                "matched_interests",
+                self._string_tuple("matched_interests", self.matched_interests),
+            )
 
     @staticmethod
     def _string_tuple(field_name: str, values: object) -> tuple[str, ...]:

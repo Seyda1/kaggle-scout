@@ -99,6 +99,14 @@ def test_matched_goals_default_to_empty_and_become_a_tuple() -> None:
     )
 
 
+def test_matched_interests_default_to_unset_and_become_a_tuple() -> None:
+    assert interpretation_with().matched_interests is None
+    assert interpretation_with(matched_interests=["tabular data"]).matched_interests == (
+        "tabular data",
+    )
+    assert interpretation_with(matched_interests=[]).matched_interests == ()
+
+
 def test_skill_breakdown_fields_default_to_empty_and_become_tuples() -> None:
     assert interpretation_with().skills_you_have == ()
     assert interpretation_with().skills_to_learn == ()

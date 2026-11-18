@@ -36,10 +36,7 @@ class RecommendationEngine:
             profile.preferred_difficulty_levels,
             interpretation.difficulty,
         )
-        interest_match = self._score_interests(
-            profile.interests,
-            interpretation.problem_type,
-        )
+        interest_match = self._score_interests(profile.interests, interpretation)
         learning_value = self._score_learning_value(
             interpretation.learning_value
         )
@@ -107,9 +104,23 @@ class RecommendationEngine:
     def _score_interests(
         cls,
         user_interests: tuple[str, ...],
+        interpretation: CompetitionInterpretation,
+    ) -> float:
+        # Qwen's ticks (step 6) replace the problem-type word check.
+        if interpretation.matched_interests is not None:
+            if not user_interests:
+                return 0.5
+            return 1.0 if interpretation.matched_interests else 0.0
+        return cls._score_interests_by_problem_type(
+            user_interests, interpretation.problem_type
+        )
+
+    @classmethod
+    def _score_interests_by_problem_type(
+        cls,
+        user_interests: tuple[str, ...],
         problem_type: str,
     ) -> float:
-        # Domain is context only and intentionally excluded from matching.
         interests = {cls._normalize(interest) for interest in user_interests}
         interests.discard("")
         if not interests:

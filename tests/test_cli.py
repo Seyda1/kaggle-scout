@@ -100,6 +100,7 @@ def test_learning_goals_and_skills_from_profile_are_given_to_qwen(
 
     assert env.provider_kwargs["learning_goals"] == ("practice",)
     assert env.provider_kwargs["skills"] == ("python",)
+    assert env.provider_kwargs["interests"] == ("classification",)
 
 
 def test_print_only_does_not_send_or_remember(

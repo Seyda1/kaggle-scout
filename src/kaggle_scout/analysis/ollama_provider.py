@@ -23,6 +23,7 @@ class OllamaCompetitionProvider:
         timeout: float = 60.0,
         learning_goals: Sequence[str] = (),
         skills: Sequence[str] = (),
+        interests: Sequence[str] = (),
     ) -> None:
         self._model = model
         self._endpoint = f"{base_url.rstrip('/')}/api/generate"
@@ -31,6 +32,9 @@ class OllamaCompetitionProvider:
             goal.strip() for goal in learning_goals if goal.strip()
         )
         self._skills = tuple(skill.strip() for skill in skills if skill.strip())
+        self._interests = tuple(
+            interest.strip() for interest in interests if interest.strip()
+        )
 
     @property
     def model(self) -> str:
@@ -44,6 +48,8 @@ class OllamaCompetitionProvider:
             parts.append(self.GOAL_INSTRUCTIONS)
         if self._skills:
             parts.append(self.SKILL_INSTRUCTIONS)
+        if self._interests:
+            parts.append(self.INTEREST_INSTRUCTIONS)
         return "".join(parts)
 
     def interpret(self, competition: Competition) -> CompetitionInterpretation:
@@ -76,6 +82,11 @@ class OllamaCompetitionProvider:
             matched_goals=self._known_goals(interpretation.matched_goals),
             skills_you_have=self._known_skills(interpretation.skills_you_have),
             skills_to_learn=self._skills_to_learn(interpretation.skills_to_learn),
+            matched_interests=(
+                self._known_interests(interpretation.matched_interests or ())
+                if self._interests
+                else None
+            ),
         )
 
     def _known_goals(self, answered: tuple[str, ...]) -> tuple[str, ...]:
@@ -83,6 +94,14 @@ class OllamaCompetitionProvider:
         answered_keys = {goal.strip().casefold() for goal in answered}
         return tuple(
             goal for goal in self._learning_goals if goal.casefold() in answered_keys
+        )
+
+    def _known_interests(self, answered: tuple[str, ...]) -> tuple[str, ...]:
+        answered_keys = {interest.strip().casefold() for interest in answered}
+        return tuple(
+            interest
+            for interest in self._interests
+            if interest.casefold() in answered_keys
         )
 
     def _known_skills(self, answered: tuple[str, ...]) -> tuple[str, ...]:
@@ -155,6 +174,20 @@ class OllamaCompetitionProvider:
         "Keep skills_required as the full list of technical skills needed.\n"
     )
 
+    INTEREST_INSTRUCTIONS = (
+        "Also add the key matched_interests: an array of the user's "
+        "interests listed below that this competition is about, copied "
+        "exactly as written. If none fit, use an empty array. If you are "
+        "unsure, leave the interest out.\n"
+        "Tick an interest only when the subject of the competition is that "
+        "interest. tabular data matches a table of rows and columns, "
+        "including regression and time series. classification matches only "
+        "when the main task is predicting a category. Do not tick an "
+        "interest only because the problem type word is the same. A game, "
+        "a photo contest, or a puzzle does not match tabular data, consumer "
+        "behavior, or electric vehicles.\n"
+    )
+
     def _build_prompt(self, competition: Competition) -> str:
         profile_lines = ""
         if self._learning_goals:
@@ -163,6 +196,8 @@ class OllamaCompetitionProvider:
             )
         if self._skills:
             profile_lines += f"User skills: {json.dumps(list(self._skills))}\n"
+        if self._interests:
+            profile_lines += f"User interests: {json.dumps(list(self._interests))}\n"
         competition_data = {
             "title": competition.title,
             "description": competition.description,

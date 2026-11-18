@@ -138,6 +138,22 @@ def test_skill_breakdown_is_shown_after_the_skill_reason() -> None:
     )
 
 
+def test_matched_interests_are_shown_after_the_interest_reason() -> None:
+    items = rank_competitions(
+        profile(),
+        [
+            (
+                competition("Table"),
+                interpretation(matched_interests=("tabular data",)),
+            ),
+        ],
+    )
+
+    report = build_report(items, report_date=REPORT_DATE)
+
+    assert "Matches your interests (tabular data)" in report.text
+
+
 def test_each_section_lists_newest_start_date_first() -> None:
     def dated(title: str, start: datetime | None) -> Competition:
         return Competition(

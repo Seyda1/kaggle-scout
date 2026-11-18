@@ -46,6 +46,10 @@ def _reason_line(item: RankedRecommendation) -> str:
         have = ", ".join(interpretation.skills_you_have) or "none"
         learn = ", ".join(interpretation.skills_to_learn) or "none"
         skill = f"{skill} (you have: {have}; you'd learn: {learn})"
+    interest = explanation.interest_reason
+    if interpretation.matched_interests is not None:
+        ticked = ", ".join(interpretation.matched_interests) or "none"
+        interest = f"{interest} ({ticked})"
     learning = explanation.learning_value_reason
     if interpretation.matched_goals:
         learning = f"{learning} ({', '.join(interpretation.matched_goals)})"
@@ -53,7 +57,7 @@ def _reason_line(item: RankedRecommendation) -> str:
         (
             skill,
             explanation.difficulty_reason,
-            explanation.interest_reason,
+            interest,
             learning,
         )
     )

@@ -97,7 +97,7 @@ That registers **Kaggle Scout Daily Report** every day at 09:30. Pass `-Time "08
 
 ### Limits
 
-- Interests affect the score through the problem type, such as classification. The subject, such as finance or sports, is not a separate check yet.
+- An interest counts when Qwen ticks it from your list because the competition is about that subject.
 - Experience level is stored and not used in the score.
 - The skill list can include skills the competition does not really need.
 - The daily task is a Windows Task Scheduler task. On macOS or Linux, run `python main.py --email` yourself.

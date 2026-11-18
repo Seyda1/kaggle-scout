@@ -118,6 +118,28 @@ def test_empty_skills_are_neutral(
     assert result.skill_match == 0.5
 
 
+def test_qwen_interest_ticks_replace_the_problem_type_check() -> None:
+    # Regression would score 0 by the old word check. A ticked interest scores 1.
+    matched = score(
+        profile_with(interests=("tabular data", "classification")),
+        interpretation_with(
+            problem_type="regression",
+            matched_interests=("tabular data",),
+        ),
+    )
+    # Classification would score 1 by the old word check. No tick scores 0.
+    unmatched = score(
+        profile_with(interests=("tabular data", "classification")),
+        interpretation_with(
+            problem_type="classification",
+            matched_interests=(),
+        ),
+    )
+
+    assert matched.interest_match == 1.0
+    assert unmatched.interest_match == 0.0
+
+
 def test_preferred_difficulty_matches() -> None:
     result = score(
         profile_with(preferred_difficulty_levels=("beginner", "advanced")),

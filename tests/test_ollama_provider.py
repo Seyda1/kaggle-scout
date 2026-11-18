@@ -175,6 +175,42 @@ def test_user_skills_are_sent_and_skill_breakdown_returned() -> None:
     assert result.skills_to_learn == ("deep learning",)
 
 
+def test_user_interests_are_sent_and_only_known_interests_are_kept() -> None:
+    provider = OllamaCompetitionProvider(
+        interests=("tabular data", "classification", "electric vehicles")
+    )
+
+    with patch(
+        "kaggle_scout.analysis.ollama_provider.urlopen",
+        return_value=FakeHttpResponse(
+            ollama_body(matched_interests=["classification", "finance"])
+        ),
+    ) as mocked_urlopen:
+        result = provider.interpret(example_competition())
+
+    prompt = json.loads(mocked_urlopen.call_args.args[0].data.decode("utf-8"))["prompt"]
+    assert (
+        'User interests: ["tabular data", "classification", "electric vehicles"]'
+        in prompt
+    )
+    assert "Tick an interest only when the subject" in prompt
+    assert result.matched_interests == ("classification",)
+
+
+def test_without_interests_the_prompt_does_not_ask_for_a_tick() -> None:
+    provider = OllamaCompetitionProvider()
+
+    with patch(
+        "kaggle_scout.analysis.ollama_provider.urlopen",
+        return_value=FakeHttpResponse(ollama_body()),
+    ) as mocked_urlopen:
+        result = provider.interpret(example_competition())
+
+    prompt = json.loads(mocked_urlopen.call_args.args[0].data.decode("utf-8"))["prompt"]
+    assert "matched_interests" not in prompt
+    assert result.matched_interests is None
+
+
 def test_skill_breakdown_keeps_only_known_have_and_drops_owned_from_learn() -> None:
     provider = OllamaCompetitionProvider(skills=("Python", "pandas"))
 
