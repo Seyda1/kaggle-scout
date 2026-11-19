@@ -83,7 +83,13 @@ The first full run takes a few minutes. Later runs skip competitions already ema
 
 ### What the email contains
 
-The subject is the count of recommended competitions and the date. The body has three groups: **Recommended**, **Maybe**, and **Not recommended**. Inside each group, the newest start date is first. Each competition shows its score, problem type, difficulty, start date, deadline, the four score parts, which of your learning goals matched, which skills you already have, which skills you would still learn, and the Kaggle link. If nothing new is waiting, the mail says so.
+The subject is the count of recommended competitions and the date. The body has three groups: **Recommended**, **Maybe**, and **Not recommended**.
+
+![Recommended competitions in the daily email](docs/images/email-report-recommended.png)
+
+![Maybe and not recommended competitions in the daily email](docs/images/email-report-maybe-and-not.png)
+
+Inside each group, the newest start date is first. Each competition shows its score, problem type, difficulty, start date, deadline, the four score parts, which of your learning goals matched, which skills you already have, which skills you would still learn, and the Kaggle link. If nothing new is waiting, the mail says so. The screenshots are one real report. Your list follows your own profile.
 
 ### Every day on Windows
 
