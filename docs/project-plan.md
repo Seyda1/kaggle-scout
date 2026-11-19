@@ -790,23 +790,6 @@ The LLM should not return arbitrary prose when the application needs structured 
 
 We should use structured outputs whenever possible.
 
-### Learning Goals
-
-Understand:
-
-* LLM calls
-
-* Prompt design
-
-* Structured outputs
-
-* Validation
-
-* Hallucination risks
-
-* LLM failure handling
-
----
 
 # Phase 4 — Build the User Profile
 
@@ -1870,15 +1853,11 @@ The goal is to build a **personal AI agent that understands what I know, what I 
 
 Kaggle is the initial environment because it provides a concrete and measurable problem.
 
-The deeper objective is to learn how to build **autonomous, tool-using, stateful, personalized AI systems.**
+
 
 ---
 
-# 📌 Project Principle
 
-> **Build small. Understand deeply. Evaluate continuously. Add complexity only when it solves a real problem.**
-
-This repository is both a software project and a learning laboratory for agent engineering.
 
 ---
 
